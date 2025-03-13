@@ -2,8 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const Database = require('better-sqlite3');
+const mongoose = require('mongoose');
 const axios = require('axios');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -11,17 +13,40 @@ const PORT = process.env.PORT || 5001;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
 });
 
-// Initialize database with proper error handling
+// Import Routes
+const aiRoutes = require('./routes/aiRoutes');
+const olabsRoutes = require('./routes/olabsRoutes');
+
+// Routes
+app.use('/api/ai', aiRoutes);
+app.use('/api/olabs', olabsRoutes);
+
+// Optional MongoDB connection - commented out for now
+/*
+if (process.env.MONGO_URI) {
+  mongoose.connect(process.env.MONGO_URI, { 
+    useNewUrlParser: true, 
+    useUnifiedTopology: true 
+  })
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => console.log('MongoDB connection error:', err.message));
+} else {
+  console.log('MongoDB URI not provided - running without database');
+}
+*/
+
+// Initialize SQLite database with proper error handling
 let db;
 try {
   const dbPath = path.join(__dirname, 'database.sqlite');
   db = new Database(dbPath, { verbose: console.log });
-  console.log('Database connected successfully');
+  console.log('SQLite database connected successfully');
   
   // Create tables if they don't exist
   db.exec(`
@@ -50,8 +75,8 @@ try {
     );
   `);
 } catch (err) {
-  console.error('Database initialization failed:', err);
-  process.exit(1); // Exit if database fails to initialize
+  console.error('SQLite database initialization failed:', err);
+  process.exit(1);
 }
 
 // Dummy labs array to support "search" mode in /api/ai/convertLesson
@@ -144,15 +169,13 @@ app.post('/api/ai/generateQuiz', async (req, res) => {
 
   Text: "${text}"
 
-<<<<<<< HEAD
   Format your response as a JSON array with the following structure:
   [
     {
       "question": "Question text here?",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "answer": "The correct option text"
-    },
-    ...more questions...
+    }
   ]
 
   Make sure each question:
@@ -173,37 +196,6 @@ app.post('/api/ai/generateQuiz', async (req, res) => {
         generationConfig: {
           temperature: 0.2,
           maxOutputTokens: 1000
-=======
-// POST "AI" lesson conversion route: return an experiment idea or search for closest lab
-app.post('/api/ai/convertLesson', async (req, res) => {
-  // Updated destructuring to include difficulty
-  const { lesson, mode, difficulty } = req.body;
-  const geminiApiKey = 'AIzaSyDnDeZtje4cWWsESFwRlCtTfsexDuNcEeY'; // Replace with your actual Gemini API key
-
-  if (mode === 'experiment') {
-    try {
-      // Build dynamic prompt based on difficulty
-      let promptText;
-      if (difficulty === 'harder') {
-        promptText = `Generate a harder experiment idea for the lesson: ${lesson}. Include additional challenges and advanced variables.`;
-      } else if (difficulty === 'easier') {
-        promptText = `Generate an easier experiment idea for the lesson: ${lesson}. Simplify the instructions and reduce complexity.`;
-      } else {
-        promptText = `Generate an experiment idea for the lesson: ${lesson}`;
-      }
-
-      // Updated axios call using promptText
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-        {
-          contents: [{
-            parts: [{ text: promptText }]
-          }]
-        },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 10000 // 10 seconds timeout
->>>>>>> f6cd8b39b1c2e43afff3ce136c6c7e24bee45c1d
         }
       },
       {
@@ -263,6 +255,77 @@ app.post('/api/ai/convertLesson', async (req, res) => {
   }
 });
 
+// POST "AI" lesson conversion route
+app.post('/api/ai/convertLesson', async (req, res) => {
+  const { lesson, mode, difficulty } = req.body;
+  const geminiApiKey = 'AIzaSyDnDeZtje4cWWsESFwRlCtTfsexDuNcEeY';
+
+  if (mode === 'experiment') {
+    try {
+      // Build dynamic prompt based on difficulty
+      let promptText;
+      if (difficulty === 'harder') {
+        promptText = `Generate a harder experiment idea for the lesson: ${lesson}. Include additional challenges and advanced variables.`;
+      } else if (difficulty === 'easier') {
+        promptText = `Generate an easier experiment idea for the lesson: ${lesson}. Simplify the instructions and reduce complexity.`;
+      } else {
+        promptText = `Generate an experiment idea for the lesson: ${lesson}`;
+      }
+
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+        {
+          contents: [{
+            parts: [{ text: promptText }]
+          }]
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000
+        }
+      );
+
+      if (response.data?.candidates?.[0]?.content?.parts?.[0]) {
+        const description = response.data.candidates[0].content.parts[0].text.trim();
+        return res.json({
+          result: {
+            title: `${difficulty ? difficulty.charAt(0).toUpperCase() + difficulty.slice(1) + ' ' : ''}Experiment for ${lesson}`,
+            description,
+            difficulty
+          }
+        });
+      }
+      throw new Error('Invalid response format from AI API');
+    } catch (error) {
+      console.error('Error generating experiment:', error);
+      return res.status(500).json({
+        error: 'Failed to generate experiment idea',
+        message: error.message
+      });
+    }
+  } else if (mode === 'search') {
+    // Search mode logic
+    const terms = lesson.split(' ');
+    let bestMatch = null;
+    let maxScore = 0;
+    labs.forEach(lab => {
+      let score = 0;
+      terms.forEach(term => {
+        if (lab.title.toLowerCase().includes(term.toLowerCase())) {
+          score++;
+        }
+      });
+      if (score > maxScore) {
+        maxScore = score;
+        bestMatch = lab;
+      }
+    });
+    return res.json({ result: bestMatch || { message: 'No matching lab found' } });
+  } else {
+    return res.status(400).json({ message: 'Invalid mode' });
+  }
+});
+
 // GET templates
 app.get('/api/templates', (req, res) => {
   try {
@@ -305,7 +368,7 @@ app.post('/api/templates', (req, res) => {
     console.error('Detailed error saving template:', error);
     res.status(500).json({ 
       error: 'Failed to save template',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -326,6 +389,14 @@ app.get('/api/templates/:id', (req, res) => {
     res.status(500).json({ error: 'Failed to fetch template' });
   }
 });
+
+// Serve static assets if in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static('client/build'));
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
