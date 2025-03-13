@@ -16,7 +16,9 @@ function Navbar() {
           <li>
             <Link to="/communities" className="hover:text-gray-300">Communities</Link>
           </li>
-          {/* ...existing nav items... */}
+          <li>
+            <Link to="/lesson" className="hover:text-gray-300">Lesson Converter</Link> {/* new nav item */}
+          </li>
         </ul>
       </div>
     </nav>
