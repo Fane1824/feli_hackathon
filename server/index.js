@@ -2,7 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const Database = require('better-sqlite3');
-const axios = require('axios'); // Added axios import
+const axios = require('axios');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -15,30 +16,46 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize database
-const db = new Database('./database.sqlite');
+// Initialize database with proper error handling
+let db;
+try {
+  const dbPath = path.join(__dirname, 'database.sqlite');
+  db = new Database(dbPath, { verbose: console.log });
+  console.log('Database connected successfully');
+  
+  // Create tables if they don't exist
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS communities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      lookingFor TEXT NOT NULL,
+      contactEmail TEXT NOT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      communityId INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      biography TEXT,
+      FOREIGN KEY (communityId) REFERENCES communities(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      type TEXT DEFAULT 'quiz',
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+} catch (err) {
+  console.error('Database initialization failed:', err);
+  process.exit(1); // Exit if database fails to initialize
+}
 
 // Dummy labs array to support "search" mode in /api/ai/convertLesson
 const labs = []; // Added dummy labs declaration
-
-// Create tables if they don't exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS communities (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    lookingFor TEXT NOT NULL,
-    contactEmail TEXT NOT NULL,
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS members (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    communityId INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    biography TEXT,
-    FOREIGN KEY (communityId) REFERENCES communities(id) ON DELETE CASCADE
-  );
-`);
 
 // Routes
 
@@ -114,95 +131,190 @@ app.post('/api/communities', (req, res) => {
 });
 
 // AI Lesson conversion endpoint
-// POST "AI" route: generate quiz from text
-app.post('/api/ai/generateQuiz', (req, res) => {
+// Update the AI quiz generation endpoint to use Gemini API
+app.post('/api/ai/generateQuiz', async (req, res) => {
   const { text } = req.body;
+  console.log('Received text for quiz generation:', text);
+  const geminiApiKey = 'AIzaSyDnDeZtje4cWWsESFwRlCtTfsexDuNcEeY'; // Use the existing API key
   
-  // Here you'd call a real AI model (OpenAI, HuggingFace, etc.)
-  // For PoC, let's respond with mock quiz questions:
-  const quizQuestions = [
-    { question: `What is the main topic of: "${text}"?`, options: ['Option A','Option B'], correctAnswer: 'Option A' },
-    { question: `Why is "${text}" important?`, options: ['Because','Because not'], correctAnswer: 'Because' }
-  ];
+  // Create a structured prompt for quiz generation
+  const prompt = `
+  Based on the following text, generate 3-5 multiple-choice quiz questions.
+  Each question should have 4 options with exactly one correct answer.
 
-  res.json({ questions: quizQuestions });
-});
+  Text: "${text}"
 
-// POST "AI" lesson conversion route: return an experiment idea or search for closest lab
-app.post('/api/ai/convertLesson', async (req, res) => {
-  const { lesson, mode } = req.body;
-  const geminiApiKey = 'AIzaSyDnDeZtje4cWWsESFwRlCtTfsexDuNcEeY'; // Replace with your actual Gemini API key
+  Format your response as a JSON array with the following structure:
+  [
+    {
+      "question": "Question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "answer": "The correct option text"
+    },
+    ...more questions...
+  ]
 
-  if (mode === 'experiment') {
-    try {
-      // Updated axios call with timeout configuration and enhanced logging
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-        {
-          contents: [{
-            parts: [{ text: `Generate an experiment idea for the lesson: ${lesson}` }]
-          }]
-        },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 10000 // 10 seconds timeout
+  Make sure each question:
+  - Is directly related to the text
+  - Has clear, unambiguous wording
+  - Has a single clear correct answer
+  - Has plausible distractors (wrong options)
+  `;
+
+  try {
+    console.log('Sending quiz generation request to Gemini API...');
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1000
         }
-      );
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000 // 15 seconds timeout
+      }
+    );
 
-      console.log('Gemini API response:', response.data);
-      if (response.data && response.data.candidates && response.data.candidates.length > 0) {
-        const candidate = response.data.candidates[0];
-        // Log full candidate content for debugging
-        console.log('Candidate content:', JSON.stringify(candidate.content, null, 2));
-
-        if (candidate.content && candidate.content.parts && Array.isArray(candidate.content.parts) && candidate.content.parts.length > 0) {
-          // Join all parts text for a cleaner description
-          const description = candidate.content.parts.map(part => part.text.trim()).join('\n\n');
-          // Build a more formatted response
-          return res.json({
-            result: {
-              title: `Experiment for ${lesson}`,
-              description,
-              meta: {
-                finishReason: candidate.finishReason,
-                averageLogProbabilities: candidate.avgLogprobs
-              }
-            }
-          });
+    console.log('Received response from Gemini API');
+    if (response.data && response.data.candidates && response.data.candidates.length > 0) {
+      const candidate = response.data.candidates[0];
+      if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+        const rawText = candidate.content.parts[0].text;
+        
+        // Extract JSON array from the response
+        // This regex finds content between square brackets
+        const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+        
+        if (jsonMatch) {
+          try {
+            // Parse the extracted JSON
+            const questions = JSON.parse(jsonMatch[0]);
+            return res.json({ questions });
+          } catch (parseError) {
+            console.error('Failed to parse JSON from response:', parseError);
+            console.error('Raw text:', rawText);
+            throw new Error('Invalid JSON format in AI response');
+          }
         } else {
-          console.error('Unexpected candidate content structure:', candidate.content);
-          throw new Error('Unexpected candidate content structure');
+          console.error('Could not extract JSON from response:', rawText);
+          throw new Error('No valid JSON found in AI response');
         }
-      } else {
-        throw new Error('Invalid response format from Gemini API');
       }
-    } catch (error) {
-      console.error('Error generating experiment idea:', error.message, error.config);
-      return res.status(500).json({ message: 'Failed to generate experiment idea', error: error.message });
     }
-  } else if (mode === 'search') {
-    // Simulate scraping labs and searching for the best match based on title terms.
-    const terms = lesson.split(' ');
-    let bestMatch = null;
-    let maxScore = 0;
-    labs.forEach(lab => {
-      let score = 0;
-      terms.forEach(term => {
-        if (lab.title.toLowerCase().includes(term.toLowerCase())) {
-          score++;
-        }
-      });
-      if (score > maxScore) {
-        maxScore = score;
-        bestMatch = lab;
+    throw new Error('Invalid or unexpected response format from AI API');
+  } catch (error) {
+    console.error('Error generating quiz:', error.message);
+    // Fall back to mock quiz questions if the API fails
+    const fallbackQuestions = [
+      { 
+        question: `What might be a key concept in: "${text.substring(0, 50)}..."?`, 
+        options: ['Conceptual understanding', 'Practical application', 'Theoretical foundation', 'Historical context'], 
+        answer: 'Theoretical foundation' 
+      },
+      { 
+        question: 'When might this knowledge be most useful?', 
+        options: ['Academic research', 'Practical experimentation', 'Everyday scenarios', 'All of the above'], 
+        answer: 'All of the above' 
       }
+    ];
+    
+    res.json({ 
+      questions: fallbackQuestions,
+      error: 'Used fallback questions due to API error',
+      errorMessage: error.message
     });
-    res.json({ result: bestMatch || { message: 'No matching lab found' } });
-  } else {
-    res.status(400).json({ message: 'Invalid mode' });
   }
 });
 
-app.listen(PORT, () => {
+// GET templates
+app.get('/api/templates', (req, res) => {
+  try {
+    const templates = db.prepare('SELECT * FROM templates ORDER BY createdAt DESC').all();
+    res.json({ templates });
+  } catch (error) {
+    console.error('Error fetching templates:', error);
+    res.status(500).json({ error: 'Failed to fetch templates' });
+  }
+});
+
+// POST save template - Updated with better error handling
+app.post('/api/templates', (req, res) => {
+  try {
+    const { title, content } = req.body;
+    console.log('Received template save request:', { title, contentType: typeof content });
+    
+    if (!title || !content) {
+      console.log('Missing required fields:', { title, hasContent: !!content });
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+
+    const contentString = typeof content === 'object' ? JSON.stringify(content) : content;
+    console.log('Prepared content string length:', contentString.length);
+    
+    const stmt = db.prepare('INSERT INTO templates (title, content) VALUES (?, ?)');
+    const result = stmt.run(title, contentString);
+    console.log('Template saved successfully:', result);
+
+    res.status(201).json({
+      success: true,
+      template: {
+        id: result.lastInsertRowid,
+        title,
+        content: contentString,
+        createdAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Detailed error saving template:', error);
+    res.status(500).json({ 
+      error: 'Failed to save template',
+      details: error.message 
+    });
+  }
+});
+
+// GET single template
+app.get('/api/templates/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(id);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    
+    res.json(template);
+  } catch (error) {
+    console.error('Error fetching template:', error);
+    res.status(500).json({ error: 'Failed to fetch template' });
+  }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something broke!' });
+});
+
+// Start server with error handling
+app.listen(PORT, (err) => {
+  if (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
   console.log(`Server running on port ${PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down...');
+  if (db) {
+    db.close();
+  }
+  process.exit(0);
 });

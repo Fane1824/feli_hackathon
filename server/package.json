@@ -1,16 +1,19 @@
 {
-    "name": "lab-builder-server",
-    "version": "1.0.0",
-    "description": "Slightly-more-than-minimal PoC - Node server",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js",
-        "dev": "nodemon index.js"
-    },
-    "dependencies": {
-        "axios": "^1.8.3",
-        "better-sqlite3": "^11.8.1",
-        "cors": "^2.8.5",
-        "express": "^4.18.2"
-    }
+  "name": "feli-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "better-sqlite3": "^8.7.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
 }

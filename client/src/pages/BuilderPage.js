@@ -6,18 +6,14 @@ import axios from 'axios';
 import styles from '../styles/Builder.module.css';
 
 const BuilderPage = () => {
-  const [labTitle, setLabTitle] = useState('My Awesome Lab');
-  const [blocks, setBlocks] = useState([
-    // each block: { id, type, content }
-    { id: '1', type: 'theory', content: 'Explain the theory here...' },
-    { id: '2', type: 'procedure', content: 'Procedure steps...' },
-  ]);
+  const [labTitle, setLabTitle] = useState('');
+  const [blocks, setBlocks] = useState([]); // Start with empty blocks
   const [labs, setLabs] = useState([]);
 
   useEffect(() => {
     const fetchLabs = async () => {
       try {
-        const response = await axios.get('http://localhost:4000/api/labs');
+        const response = await axios.get('http://localhost:5001/api/labs');
         setLabs(response.data.labs);
       } catch (err) {
         console.error(err);
@@ -28,7 +24,7 @@ const BuilderPage = () => {
 
   const handleSave = async () => {
     try {
-      const response = await axios.post('http://localhost:4000/api/labs', {
+      const response = await axios.post('http://localhost:5001/api/labs', {
         title: labTitle,
         blocks,
       });

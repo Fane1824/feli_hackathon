@@ -8,7 +8,7 @@ export function TemplateManager({ setBlocks }) {
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const response = await axios.get('http://localhost:4000/api/templates');
+        const response = await axios.get('http://localhost:5001/api/templates');
         setTemplates(response.data.templates);
       } catch (err) {
         console.error(err);
@@ -19,7 +19,7 @@ export function TemplateManager({ setBlocks }) {
 
   const saveTemplate = async () => {
     try {
-      const response = await axios.post('http://localhost:4000/api/templates', {
+      const response = await axios.post('http://localhost:5001/api/templates', {
         title: templateTitle,
         blocks: [],
       });
