@@ -1,18 +1,20 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
 import BuilderPage from './pages/BuilderPage';
+import CommunitiesPage from './pages/CommunitiesPage';
 
 function App() {
   return (
     <Router>
-      <nav style={{ padding: '1rem', borderBottom: '1px solid #ccc' }}>
-        <Link to="/">Home</Link> |{" "}
-        <Link to="/builder">Open Lab Builder</Link>
-      </nav>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/builder" element={<BuilderPage />} />
-      </Routes>
+      <div className="App">
+        <Navbar />
+        <Routes>
+          <Route path="/builder" element={<BuilderPage />} />
+          <Route path="/communities" element={<CommunitiesPage />} />
+          <Route path="/" element={<HomePage />} />
+        </Routes>
+      </div>
     </Router>
   );
 }
