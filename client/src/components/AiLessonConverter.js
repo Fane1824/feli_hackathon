@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown'; // New import for markdown rendering
 import styles from '../styles/Lesson.module.css';
 
 export function AiLessonConverter() {
@@ -70,7 +71,7 @@ export function AiLessonConverter() {
         <div className={styles.resultArea}>
           <h3>{result.title}</h3>
           <div className={styles.experimentDescription}>
-            {result.description}
+            <ReactMarkdown>{result.description}</ReactMarkdown>
           </div>
           {result.meta && (
             <div className={styles.metaInfo}>
