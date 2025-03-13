@@ -1,5 +1,6 @@
 import React from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import styles from '../styles/Builder.module.css';
 
 export function DragDropBuilder({ blocks, setBlocks }) {
   const onDragEnd = (result) => {
@@ -12,12 +13,7 @@ export function DragDropBuilder({ blocks, setBlocks }) {
   };
 
   return (
-    <div style={{
-      width: '300px',
-      border: '1px solid #ccc',
-      minHeight: '200px',
-      padding: '1rem'
-    }}>
+    <div className={styles.builderContainer}>
       <h3>Drag/Drop Builder</h3>
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="blocks-droppable">
@@ -25,7 +21,7 @@ export function DragDropBuilder({ blocks, setBlocks }) {
             <div 
               ref={provided.innerRef}
               {...provided.droppableProps}
-              style={{ background: '#f0f0f0', minHeight: '150px' }}
+              className={styles.dragDropArea}
             >
               {blocks.map((block, index) => (
                 <Draggable key={block.id} draggableId={block.id} index={index}>
@@ -34,14 +30,8 @@ export function DragDropBuilder({ blocks, setBlocks }) {
                       ref={draggableProv.innerRef}
                       {...draggableProv.draggableProps}
                       {...draggableProv.dragHandleProps}
-                      style={{
-                        userSelect: 'none',
-                        padding: 8,
-                        margin: '0 0 8px 0',
-                        background: 'white',
-                        border: '1px solid #ccc',
-                        ...draggableProv.draggableProps.style
-                      }}
+                      className={styles.blockItem}
+                      style={draggableProv.draggableProps.style}
                     >
                       <strong>{block.type.toUpperCase()}</strong>
                       <p>{block.content}</p>

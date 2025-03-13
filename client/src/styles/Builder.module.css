@@ -1,0 +1,94 @@
+.builderContainer {
+  padding: 2rem;
+  background-color: var(--bg-primary);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.titleInput input {
+  width: 300px;
+  padding: 0.5rem;
+  margin-left: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+}
+
+.builderLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.dragDropArea {
+  width: 100%;
+  min-height: 400px;
+  border: 2px dashed #ccc;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.sideControls {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.blockItem {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  cursor: move;
+  transition: transform 0.2s ease;
+}
+
+.blockItem:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sideControls button,
+.saveButton,
+li button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+  min-width: 200px;
+  text-align: center;
+}
+
+.sideControls button:hover,
+.saveButton:hover,
+li button:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.saveButton {
+  display: block;
+  margin: 2rem auto;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  margin: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+li button {
+  min-width: 120px;
+  padding: 0.5rem 1rem;
+}

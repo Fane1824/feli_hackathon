@@ -3,6 +3,7 @@ import { DragDropBuilder } from '../components/DragDropBuilder';
 import { AiQuizButton } from '../components/AiQuizButton';
 import { TemplateManager } from '../components/TemplateManager';
 import axios from 'axios';
+import styles from '../styles/Builder.module.css';
 
 const BuilderPage = () => {
   const [labTitle, setLabTitle] = useState('My Awesome Lab');
@@ -44,36 +45,40 @@ const BuilderPage = () => {
   };
 
   return (
-    <div style={{ padding: '1rem' }}>
+    <div className={styles.builderContainer}>
       <h2>Lab Builder</h2>
-      <label>
+      <label className={styles.titleInput}>
         Title:{" "}
         <input
           value={labTitle}
           onChange={(e) => setLabTitle(e.target.value)}
-          style={{ width: '300px' }}
         />
       </label>
 
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-        <DragDropBuilder blocks={blocks} setBlocks={setBlocks} />
-        <AiQuizButton blocks={blocks} setBlocks={setBlocks} />
+      <div className={styles.builderLayout}>
+        <div className={styles.dragDropArea}>
+          <DragDropBuilder blocks={blocks} setBlocks={setBlocks} />
+        </div>
+        
+        <div className={styles.sideControls}>
+          <AiQuizButton blocks={blocks} setBlocks={setBlocks} />
+        </div>
       </div>
 
-      <button onClick={handleSave} style={{ marginTop: '1rem' }}>
+      <button onClick={handleSave} className={styles.saveButton}>
         Save Lab
       </button>
 
       <TemplateManager setBlocks={setBlocks} />
 
-      <div style={{ marginTop: '2rem' }}>
+      <div style={{ marginTop: '2rem', maxWidth: '800px', margin: '2rem auto' }}>
         <h3>Available Labs</h3>
-        <ul>
+        <ul style={{ listStyle: 'none', padding: 0 }}>
           {labs.map(lab => (
             <li key={lab.id}>
-              {lab.title}
-              <button onClick={() => loadLab(lab.blocks)} style={{ marginLeft: '1rem' }}>
-                Load
+              <span>{lab.title}</span>
+              <button onClick={() => loadLab(lab.blocks)}>
+                Load Lab
               </button>
             </li>
           ))}

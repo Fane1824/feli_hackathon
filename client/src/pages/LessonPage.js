@@ -1,9 +1,10 @@
 import React from 'react';
 import { AiLessonConverter } from '../components/AiLessonConverter';
+import styles from '../styles/Lesson.module.css';
 
 function LessonPage() {
   return (
-    <div style={{ padding: '1rem' }}>
+    <div className={styles.lessonContainer}>
       <h2>Lesson Converter</h2>
       <AiLessonConverter />
     </div>
