@@ -130,17 +130,28 @@ app.post('/api/ai/generateQuiz', (req, res) => {
 
 // POST "AI" lesson conversion route: return an experiment idea or search for closest lab
 app.post('/api/ai/convertLesson', async (req, res) => {
-  const { lesson, mode } = req.body;
+  // Updated destructuring to include difficulty
+  const { lesson, mode, difficulty } = req.body;
   const geminiApiKey = 'AIzaSyDnDeZtje4cWWsESFwRlCtTfsexDuNcEeY'; // Replace with your actual Gemini API key
 
   if (mode === 'experiment') {
     try {
-      // Updated axios call with timeout configuration and enhanced logging
+      // Build dynamic prompt based on difficulty
+      let promptText;
+      if (difficulty === 'harder') {
+        promptText = `Generate a harder experiment idea for the lesson: ${lesson}. Include additional challenges and advanced variables.`;
+      } else if (difficulty === 'easier') {
+        promptText = `Generate an easier experiment idea for the lesson: ${lesson}. Simplify the instructions and reduce complexity.`;
+      } else {
+        promptText = `Generate an experiment idea for the lesson: ${lesson}`;
+      }
+
+      // Updated axios call using promptText
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
         {
           contents: [{
-            parts: [{ text: `Generate an experiment idea for the lesson: ${lesson}` }]
+            parts: [{ text: promptText }]
           }]
         },
         {

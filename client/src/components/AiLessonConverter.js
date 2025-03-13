@@ -5,14 +5,16 @@ import styles from '../styles/Lesson.module.css';
 export function AiLessonConverter() {
   const [lesson, setLesson] = useState('');
   const [mode, setMode] = useState('experiment');
+  const [difficulty, setDifficulty] = useState('easier'); // New state for difficulty
   const [result, setResult] = useState(null);
 
   const handleConvert = async () => {
     try {
-      console.log('Sending request to server...', { lesson, mode });
+      console.log('Sending request to server...', { lesson, mode, difficulty });
       const response = await axios.post('http://localhost:5001/api/ai/convertLesson', { 
         lesson, 
-        mode 
+        mode,
+        difficulty // Pass the difficulty along
       });
       console.log('Server response:', response.data);
       setResult(response.data.result);
@@ -45,6 +47,22 @@ export function AiLessonConverter() {
         </select>
       </label>
       <br />
+      {mode === 'experiment' && (
+        <>
+          <label>
+            Difficulty:{' '}
+            <select 
+              value={difficulty} 
+              onChange={(e) => setDifficulty(e.target.value)}
+              className="input-field"
+            >
+              <option value="easier">Easier</option>
+              <option value="harder">Harder</option>
+            </select>
+          </label>
+          <br />
+        </>
+      )}
       <button onClick={handleConvert} className="btn btn-primary">
         Convert
       </button>
@@ -54,6 +72,13 @@ export function AiLessonConverter() {
           <div className={styles.experimentDescription}>
             {result.description}
           </div>
+          {result.meta && (
+            <div className={styles.metaInfo}>
+              <small>
+                (Finish Reason: {result.meta.finishReason} | Avg LogProb: {result.meta.averageLogProbabilities})
+              </small>
+            </div>
+          )}
         </div>
       )}
     </div>
