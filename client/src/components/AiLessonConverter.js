@@ -50,8 +50,10 @@ export function AiLessonConverter() {
       </button>
       {result && (
         <div className={styles.resultArea}>
-          <h4>Result:</h4>
-          <pre>{JSON.stringify(result, null, 2)}</pre>
+          <h3>{result.title}</h3>
+          <div className={styles.experimentDescription}>
+            {result.description}
+          </div>
         </div>
       )}
     </div>
